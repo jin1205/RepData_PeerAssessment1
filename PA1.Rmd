@@ -1,0 +1,134 @@
+# Analysis of acitivity monitoring data
+
+========================================================
+
+### Loading and preprocessing the data
+
+1.Load the data.
+```{r}
+data <- read.csv("./activity.csv")
+```
+
+### Mean total number of steps taken per day
+
+1.Calculate total number of steps taken each day.
+```{r}
+s <- split(data, data$date)
+totalSteps <- lapply(s, function(x) sum(x[,1], na.rm = TRUE))
+totalSteps <- data.frame(names(totalSteps), unlist(totalSteps))
+rownames(totalSteps) <- 1:nrow(totalSteps)
+names(totalSteps) <- c("date","steps")
+```
+
+2.Make a histogram of the total number of steps taken each day.
+```{r}
+hist(totalSteps$steps)
+```
+
+3.The mean and median total number of steps taken per day.
+```{r}
+mean(totalSteps$steps)
+median(totalSteps$steps)
+```
+
+### What is the average daily acitivity pattern?
+
+1.Calculate the average number of steps at the same time of every day.
+```{r}
+s2 <- split(data, data$interval)
+averagedSteps <- lapply(s2, function(x) mean(x[,1], na.rm = TRUE))
+averagedSteps <- data.frame(names(averagedSteps), unlist(averagedSteps))
+rownames(averagedSteps) <- 1:nrow(averagedSteps)
+names(averagedSteps) <- c("interval","steps")
+averagedSteps$interval <- as.numeric(levels(averagedSteps$interval))[averagedSteps$interval]
+```
+
+2.Make a time series plot.
+```{r}
+plot(averagedSteps$interval, averagedSteps$steps, type = "l", col = "red", main = "5-minute interval and the average number of steps taken", xlab = "Interval", ylab = "Number of steps")
+```
+
+3.The 5-minute interval that contains the maximum number of steps.
+```{r}
+averagedSteps[averagedSteps$steps == max(averagedSteps$steps),][,1]
+```
+
+### Imputing missing values
+
+1.Calculate the total number of missing values in the dataset.
+```{r}
+nrow(data[is.na(data[,1]),])
+```
+
+2.Create a new dataset and a subset that contains missing values. Fill in the missing values using the mean of the 5-minute interval.
+```{r}
+data2 <- data
+subset <- data2[is.na(data2[,1]),]
+ for(i in rownames(subset))
+         { 
+         data2[as.numeric(i),1] <-  averagedSteps[averagedSteps$interval== data2[as.numeric(i),3],2] 
+         }
+```
+
+3.Make a new histogram of the total number of steps taken each day.
+```{r}
+s3 <- split(data2, data2$date)
+totalSteps2 <- lapply(s, function(x) sum(x[,1], na.rm = TRUE))
+totalSteps2 <- data.frame(names(totalSteps2), unlist(totalSteps2))
+rownames(totalSteps2) <- 1:nrow(totalSteps2)
+names(totalSteps2) <- c("date","steps")
+hist(totalSteps2$steps)
+```
+
+4.Calculate the mean and median total number of steps taken per day after imputing missing values.
+```{r}
+mean(totalSteps2$steps)
+median(totalSteps2$steps)
+```
+
+These two values don't differ from the first part of the assignment. The impact of imputing missing data can be ignored.
+
+### Are there differences in activity patterns between weekdays and weekends?
+
+1.Create a new factor variable in the dataset with two levels "weekday" and "weekend".
+```{r}
+data2$weekday<-factor(weekdays(as.Date(data2$date)), levels = c("Monday","Tuesay","Wednesday","Thursday","Friday","Saturday","Sunday","weekday","weekend"))
+data2$weekday[data2$weekday=="Monday"] <- factor("weekday")
+data2$weekday[data2$weekday=="Tuesday"] <- factor("weekday")
+data2$weekday[data2$weekday=="Wednesday"] <- factor("weekday")
+data2$weekday[data2$weekday=="Thursday"] <- factor("weekday")
+data2$weekday[data2$weekday=="Friday"] <- factor("weekday")
+data2$weekday[data2$weekday=="Saturday"] <- factor("weekend")
+data2$weekday[data2$weekday=="Sunday"] <- factor("weekend")
+```
+
+2.Subset and split the dataset based on the factor.
+```{r}
+subset2 <- data2[data2$weekday=="weekday",]
+s4 <- split(subset2, subset2$interval)
+subset3 <- data2[data2$weekday=="weekend",]
+s5 <- split(subset3, subset3$interval)
+```
+
+3.Calculate the average number of steps taken for each subset.And then combine these two subsets together. 
+Make a panel plot containing a time series plot.
+```{r}
+avewd <- lapply(s4, function(x) mean(x[,1]))
+avewd <- data.frame(names(avewd),unlist(avewd))
+rownames(avewd) <- 1:nrow(avewd)
+names(avewd) <- c("interval","steps")
+avewd$interval <- as.numeric(levels(avewd$interval))[avewd$interval]
+avewd$weekday <- factor("weekday")
+```
+
+```{r}
+avewe <- lapply(s5, function(x) mean(x[,1]))
+avewe <- data.frame(names(avewe),unlist(avewe))
+rownames(avewe) <- 1:nrow(avewe)
+names(avewe) <- c("interval","steps")
+avewe$interval <- as.numeric(levels(avewe$interval))[avewe$interval]
+avewe$weekday <- factor("weekend")
+ave <- rbind(avewd,avewe)
+library(lattice)
+xyplot(ave$steps ~ ave$interval|ave$weekday, layout = c(1,2), type = "l", xlab = "Interval", ylab = "Number of steps")
+```
